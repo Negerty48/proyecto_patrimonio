@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patrimonio Inmaterial 2027 | Mapa de Fiestas y Rituales de España</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  
+  <!-- Google Fonts: Playfair Display & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['"Playfair Display"', 'Georgia', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            heritage: {
+              50: '#FAF8F5',
+              100: '#F5EFE6',
+              200: '#EBDDCB',
+              300: '#DFC6AB',
+              500: '#C08D5D',
+              700: '#8C5627',
+              800: '#5C3413',
+              900: '#2C1808',
+            },
+            terracotta: {
+              DEFAULT: '#C85A32',
+              dark: '#9E3E1B',
+              light: '#F4E5DF'
+            },
+            season: {
+              invierno: '#2B6CB0',
+              primavera: '#2F855A',
+              verano: '#DD6B20',
+              otono: '#9C4221'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons & Marked (Markdown renderer) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background-color: #FAF8F5;
+    }
+    
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F5EFE6;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #DFC6AB;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #C08D5D;
+    }
+
+    /* Container layout rules to prevent Leaflet zero-height collapse */
+    #mainLayout {
+      display: flex;
+      flex: 1 1 0%;
+      height: calc(100vh - 105px);
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #mapWrapper {
+      position: relative;
+      height: 100%;
+      min-height: 380px;
+      flex: 1 1 0%;
+      background-color: #DCE8F2; /* Ocean background color */
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
+      background-color: #DCE8F2 !important;
+    }
+
+    /* Leaflet marker styling */
+    .custom-marker-pin {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 13px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35), 0 0 0 2.5px #FFFFFF;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .custom-marker-pin:hover {
+      transform: scale(1.25);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), 0 0 0 3.5px #FFFFFF;
+      z-index: 9999 !important;
+    }
+    
+    .custom-marker-pin.active {
+      transform: scale(1.38);
+      box-shadow: 0 0 0 4px #FFFFFF, 0 0 0 8px rgba(200, 90, 50, 0.75), 0 8px 22px rgba(0,0,0,0.45);
+      z-index: 10000 !important;
+      animation: pulseActive 2s infinite;
+    }
+
+    @keyframes pulseActive {
+      0% {
+        box-shadow: 0 0 0 4px #FFFFFF, 0 0 0 6px rgba(200, 90, 50, 0.7);
+      }
+      50% {
+        box-shadow: 0 0 0 4px #FFFFFF, 0 0 0 12px rgba(200, 90, 50, 0.2);
+      }
+      100% {
+        box-shadow: 0 0 0 4px #FFFFFF, 0 0 0 6px rgba(200, 90, 50, 0.7);
+      }
+    }
+
+    /* Province hover styling */
+    .province-polygon {
+      transition: all 0.2s ease;
+    }
+    .province-polygon:hover {
+      fill-opacity: 0.35 !important;
+      stroke-width: 2.5px !important;
+      stroke: #8C5627 !important;
+      cursor: pointer;
+    }
+
+    /* Markdown rendered typography */
+    .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      color: #2C1808;
+      margin-top: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .markdown-content h2 { font-size: 1.25rem; border-bottom: 2px solid #EBDDCB; padding-bottom: 0.3rem; }
+    .markdown-content h3 { font-size: 1.1rem; }
+    .markdown-content p {
+      margin-bottom: 0.85rem;
+      line-height: 1.68;
+      color: #374151;
+    }
+    .markdown-content ul, .markdown-content ol {
+      margin-bottom: 1rem;
+      padding-left: 1.35rem;
+    }
+    .markdown-content ul { list-style-type: disc; }
+    .markdown-content ol { list-style-type: decimal; }
+    .markdown-content li {
+      margin-bottom: 0.4rem;
+      line-height: 1.6;
+      color: #4B5563;
+    }
+    .markdown-content strong {
+      color: #1F2937;
+      font-weight: 600;
+    }
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      font-size: 0.875rem;
+      background-color: #FFFFFF;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .markdown-content th {
+      background-color: #F5EFE6;
+      color: #5C3413;
+      font-weight: 600;
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 2px solid #DFC6AB;
+    }
+    .markdown-content td {
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid #F3F4F6;
+      vertical-align: top;
+      color: #4B5563;
+    }
+    .markdown-content tr:last-child td {
+      border-bottom: none;
+    }
+    .markdown-content tr:hover td {
+      background-color: #FAF8F5;
+    }
+    .markdown-content blockquote {
+      border-left: 4px solid #C08D5D;
+      padding-left: 1rem;
+      font-style: italic;
+      color: #5C3413;
+      margin: 1rem 0;
+      background: #FAF8F5;
+      padding: 0.6rem 1rem;
+      border-radius: 0 0.375rem 0.375rem 0;
+    }
+
+    /* Inset Mini-map for Canarias */
+    #canariasInsetMap {
+      width: 190px;
+      height: 140px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #C08D5D;
+      background-color: #DCE8F2;
+    }
+  </style>
+</head>
+
+<body class="flex flex-col h-screen w-screen antialiased select-none">
+
+  <!-- TOP HEADER & EXPANDED SEARCH BAR -->
+  <header class="bg-white border-b border-heritage-200 px-4 py-2.5 flex items-center justify-between gap-4 z-30 shadow-xs flex-shrink-0">
+    
+    <!-- Brand / Title (Left) -->
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <div class="w-10 h-10 rounded-xl bg-heritage-900 text-amber-100 flex items-center justify-center shadow-md flex-shrink-0">
+        <i data-lucide="map" class="w-5 h-5 text-terracotta"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-serif text-lg md:text-xl font-bold text-heritage-900 tracking-tight leading-tight">
+            Patrimonio Inmaterial 2027
+          </h1>
+          <span class="bg-terracotta-light text-terracotta text-xs font-bold px-2 py-0.5 rounded-full border border-terracotta/20">
+            40 Fiestas
+          </span>
+        </div>
+        <p class="text-[11px] text-gray-500 hidden sm:block">
+          Mapa Oficial de Fiestas y Rituales de España (Península, Baleares y Canarias)
+        </p>
+      </div>
+    </div>
+
+    <!-- SEARCH BAR (ALARGADO HACIA LA IZQUIERDA CON ALTO CONTRASTE) -->
+    <div class="flex-1 max-w-2xl mx-1 sm:mx-4">
+      <div class="relative w-full">
+        <i data-lucide="search" class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-heritage-700 pointer-events-none"></i>
+        <input 
+          id="searchInput" 
+          type="text" 
+          placeholder="Buscar fiesta, pueblo, provincia o ritual (ej. Vijanera, Fallas, Jarramplas, fuego)..." 
+          class="w-full pl-11 pr-10 py-2.5 text-sm font-semibold bg-heritage-50/70 border-2 border-heritage-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-terracotta focus:border-terracotta focus:bg-white transition-all text-gray-900 placeholder-gray-500 shadow-inner"
+        />
+        <button id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- CONTROLS (Right) -->
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <!-- Selector de Capas de Fondo de España (IGN Oficial / Esri Topo) -->
+      <div class="relative">
+        <select 
+          id="layerSelect" 
+          title="Seleccionar mapa de fondo de España"
+          class="bg-white border-2 border-heritage-300 rounded-xl px-3 py-2 text-xs font-bold text-heritage-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-terracotta cursor-pointer"
+        >
+          <option value="ign">🗺️ Mapa Oficial IGN (España)</option>
+          <option value="topo">⛰️ Relieve Físico (Esri Topo)</option>
+        </select>
+      </div>
+
+      <!-- Center Spain View button -->
+      <button 
+        id="resetViewBtn" 
+        title="Encuadrar Mapa de España (Península y Baleares)" 
+        class="flex items-center gap-1.5 px-3 py-2 text-xs bg-heritage-900 hover:bg-terracotta text-white rounded-xl font-bold transition-colors shadow-xs"
+      >
+        <i data-lucide="maximize-2" class="w-4 h-4"></i>
+        <span class="hidden md:inline">Encuadrar España</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- SECONDARY FILTER BAR -->
+  <div class="bg-heritage-50 border-b border-heritage-200 px-4 py-1.5 flex items-center justify-between text-xs text-gray-600 flex-shrink-0">
+    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+      
+      <!-- Season Filter Pills -->
+      <div class="flex items-center bg-white p-0.5 rounded-lg border border-heritage-200 text-xs font-medium mr-1">
+        <button data-season="all" class="season-filter-btn px-2.5 py-1 rounded-md bg-heritage-900 text-white shadow-xs font-bold">Todas</button>
+        <button data-season="Invierno" class="season-filter-btn px-2 py-1 rounded-md text-gray-600 hover:text-heritage-900 transition-colors">❄️ Invierno</button>
+        <button data-season="Primavera" class="season-filter-btn px-2 py-1 rounded-md text-gray-600 hover:text-heritage-900 transition-colors">🌸 Primavera</button>
+        <button data-season="Verano" class="season-filter-btn px-2 py-1 rounded-md text-gray-600 hover:text-heritage-900 transition-colors">☀️ Verano</button>
+        <button data-season="Otoño" class="season-filter-btn px-2 py-1 rounded-md text-gray-600 hover:text-heritage-900 transition-colors">🍂 Otoño</button>
+      </div>
+
+      <!-- Category select -->
+      <select id="categorySelect" class="bg-white border border-heritage-200 rounded-md px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-heritage-500">
+        <option value="all">Todas las categorías (40)</option>
+        <option value="Mascaradas">Mascaradas y Ritos de Invierno</option>
+        <option value="Fuego">Ritos de Fuego y Purificación</option>
+        <option value="Taurinas">Fiestas y Encierros Taurinos</option>
+        <option value="Ecuestres">Caballerías y Ritos Ecuestres</option>
+        <option value="Batallas">Batallas Incruentas y Dionisíacas</option>
+        <option value="Romerías">Romerías y Procesiones Singulares</option>
+        <option value="Danzas">Danzas Tradicionales</option>
+        <option value="Ánimas">Ritos de Ánimas y Difuntos</option>
+      </select>
+
+      <!-- Month quick pills -->
+      <div class="flex items-center gap-1 hidden sm:flex">
+        <button data-month="1" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Ene</button>
+        <button data-month="2" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Feb</button>
+        <button data-month="3" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Mar</button>
+        <button data-month="4" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Abr</button>
+        <button data-month="5" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">May</button>
+        <button data-month="6" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Jun</button>
+        <button data-month="7" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Jul</button>
+        <button data-month="8" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Ago</button>
+        <button data-month="9" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Sep</button>
+        <button data-month="10" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Oct</button>
+        <button data-month="11" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Nov</button>
+        <button data-month="12" class="month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white">Dic</button>
+      </div>
+    </div>
+
+    <!-- Active counter & Province indicator -->
+    <div class="flex items-center gap-3">
+      <div id="hoveredProvince" class="text-xs font-semibold text-heritage-700 hidden md:block">
+        <!-- Live hovered province name -->
+      </div>
+      <div id="resultsCount" class="font-bold text-heritage-900 whitespace-nowrap pl-2">
+        40 de 40 fiestas
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE: MAP (LEFT) + DETAIL PANEL (RIGHT) -->
+  <main id="mainLayout" class="flex flex-col lg:flex-row relative">
+    
+    <!-- MAP CONTAINER (LEFT) -->
+    <div id="mapWrapper" class="relative flex-grow h-1/2 lg:h-full lg:w-7/12 z-10">
+      <div id="map"></div>
+
+      <!-- Floating Map Legend -->
+      <div class="absolute top-4 left-4 z-[500] bg-white/95 backdrop-blur-xs p-2.5 rounded-xl border border-heritage-200 shadow-md text-xs pointer-events-auto hidden sm:block max-w-xs">
+        <div class="font-bold text-heritage-900 mb-1 flex items-center justify-between">
+          <span class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-terracotta"></span>
+            <span>40 Fiestas del Mapa</span>
+          </span>
+          <span class="text-[10px] text-gray-500 font-normal">Puntos 1 al 40</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5 text-[11px] mt-1.5">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-[#2B6CB0] flex items-center justify-center text-white text-[9px] font-bold">1</span>
+            <span class="text-gray-700">Invierno (1-4, 37-40)</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-[#2F855A] flex items-center justify-center text-white text-[9px] font-bold">5</span>
+            <span class="text-gray-700">Primavera (5-16)</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-[#DD6B20] flex items-center justify-center text-white text-[9px] font-bold">17</span>
+            <span class="text-gray-700">Verano (17-28)</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-[#9C4221] flex items-center justify-center text-white text-[9px] font-bold">29</span>
+            <span class="text-gray-700">Otoño (29-36)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dedicated Canary Islands Inset Map Box (Bottom-Left) -->
+      <!-- AHORA SE OCULTA AUTOMÁTICAMENTE SI LA FIESTA 36 SE FILTRA -->
+      <div 
+        id="canariasInsetBox" 
+        class="absolute bottom-4 left-4 z-[500] bg-white/95 backdrop-blur-xs p-2.5 rounded-2xl border-2 border-heritage-300 shadow-xl pointer-events-auto cursor-pointer hover:border-terracotta transition-all"
+        title="Hacer clic para ver fiesta #36: Las Tablas de San Andrés en Icod de los Vinos (Tenerife)"
+      >
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5">
+            <span class="w-4 h-4 rounded-full bg-[#9C4221] text-white text-[10px] font-bold flex items-center justify-center">36</span>
+            <span class="font-bold text-xs text-heritage-900 tracking-tight">ISLAS CANARIAS</span>
+          </div>
+          <span class="text-[10px] text-terracotta font-semibold hover:underline">Ver ficha →</span>
+        </div>
+        <div id="canariasInsetMap"></div>
+        <div class="mt-1.5 flex items-center justify-between text-[10px] text-gray-500">
+          <span>Icod de los Vinos (Tenerife)</span>
+          <span class="font-semibold text-heritage-800">28-30 NOV</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETAIL PANEL (RIGHT) -->
+    <aside 
+      id="detailPanel" 
+      class="h-1/2 lg:h-full lg:w-5/12 bg-white border-t lg:border-t-0 lg:border-l border-heritage-200 z-20 flex flex-col shadow-2xl select-text overflow-hidden transition-all duration-300"
+    >
+      <!-- STATE A: EMPTY / WELCOME SCREEN -->
+      <div id="welcomeView" class="h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-heritage-50 to-white overflow-y-auto">
+        <div class="w-20 h-20 rounded-2xl bg-heritage-100 border border-heritage-200 text-terracotta flex items-center justify-center mb-5 shadow-sm">
+          <i data-lucide="compass" class="w-10 h-10 stroke-[1.5]"></i>
+        </div>
+        <h2 class="font-serif text-2xl font-bold text-heritage-900 mb-2">
+          Mapa de Fiestas y Rituales
+        </h2>
+        <p class="text-sm text-gray-600 max-w-md leading-relaxed mb-6">
+          Haz clic en cualquiera de las <strong>40 fiestas situadas sobre el mapa de España</strong> para abrir su resumen etnográfico, tabla de personajes y guion de rodaje documental (12–15 min).
+        </p>
+
+        <!-- Quick highlights badges -->
+        <div class="grid grid-cols-2 gap-3 w-full max-w-sm mb-6 text-left">
+          <div class="p-3 bg-white rounded-xl border border-heritage-200 shadow-xs">
+            <span class="text-xs text-gray-400 font-medium block">Total Ritos</span>
+            <span class="text-lg font-bold text-heritage-900 font-serif">40 Fiestas</span>
+          </div>
+          <div class="p-3 bg-white rounded-xl border border-heritage-200 shadow-xs">
+            <span class="text-xs text-gray-400 font-medium block">Fiesta Destacada</span>
+            <span class="text-sm font-bold text-terracotta font-serif">#33 Gau Beltza</span>
+          </div>
+          <div class="p-3 bg-white rounded-xl border border-heritage-200 shadow-xs">
+            <span class="text-xs text-gray-400 font-medium block">Mascaradas</span>
+            <span class="text-sm font-bold text-heritage-800">Silió, Piornal, Sanzoles</span>
+          </div>
+          <div class="p-3 bg-white rounded-xl border border-heritage-200 shadow-xs">
+            <span class="text-xs text-gray-400 font-medium block">Ritos de Fuego</span>
+            <span class="text-sm font-bold text-heritage-800">Fallas, Mayorga, Escobazos</span>
+          </div>
+        </div>
+
+        <button id="startTourBtn" class="px-5 py-2.5 bg-heritage-900 hover:bg-terracotta text-white rounded-xl text-sm font-semibold shadow-md transition-all flex items-center gap-2">
+          <span>Comenzar recorrido (#1 La Vijanera)</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- STATE B: FIESTA DETAILS VIEW -->
+      <div id="fiestaDetailView" class="h-full flex flex-col hidden bg-white">
+        <!-- Panel Header -->
+        <div class="p-5 border-b border-heritage-200 bg-heritage-50/70 flex-shrink-0">
+          <!-- Top row: Nav arrows + ID badge + Centering button -->
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2">
+              <span id="detailBadgeId" class="w-8 h-8 rounded-full bg-terracotta text-white font-bold text-sm flex items-center justify-center shadow-xs">
+                --
+              </span>
+              <span id="detailSeasonBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white border border-heritage-200 text-heritage-800">
+                --
+              </span>
+              <span id="detailCategoryBadge" class="text-xs font-medium px-2 py-0.5 rounded-full bg-heritage-100 text-heritage-700 hidden sm:inline-block">
+                --
+              </span>
+            </div>
+
+            <!-- Sequential navigation: Prev / Next -->
+            <div class="flex items-center gap-1">
+              <button id="prevFiestaBtn" title="Fiesta anterior" class="p-1.5 rounded-lg border border-heritage-200 bg-white hover:bg-heritage-100 text-gray-700 transition-colors">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <button id="nextFiestaBtn" title="Fiesta siguiente" class="p-1.5 rounded-lg border border-heritage-200 bg-white hover:bg-heritage-100 text-gray-700 transition-colors">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+              <button id="centerOnMapBtn" title="Centrar en el mapa" class="p-1.5 rounded-lg border border-heritage-200 bg-white hover:bg-heritage-100 text-terracotta transition-colors ml-1">
+                <i data-lucide="crosshair" class="w-4 h-4"></i>
+              </button>
+              <button id="closeDetailBtn" title="Cerrar panel" class="p-1.5 rounded-lg border border-heritage-200 bg-white hover:bg-red-50 hover:text-red-600 text-gray-400 transition-colors ml-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Fiesta Title & Location -->
+          <h2 id="detailTitle" class="font-serif text-xl sm:text-2xl font-bold text-heritage-900 leading-tight mb-2">
+            Nombre de la Fiesta
+          </h2>
+
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-600">
+            <span class="flex items-center gap-1 font-medium text-heritage-800">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-terracotta"></i>
+              <span id="detailLocation">Municipio (Provincia)</span>
+            </span>
+            <span class="flex items-center gap-1 font-medium text-gray-700">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 text-heritage-500"></i>
+              <span id="detailDate">Fecha</span>
+            </span>
+            <span id="detailSourceBadge" class="text-[10px] text-gray-400 bg-white px-1.5 py-0.5 rounded border border-heritage-200">
+              Documento Base
+            </span>
+          </div>
+        </div>
+
+        <!-- Sticky Tabs Menu -->
+        <div class="flex items-center border-b border-heritage-200 bg-white px-4 text-xs font-semibold overflow-x-auto no-scrollbar flex-shrink-0">
+          <button data-tab="tab-etno" class="tab-btn py-3 px-3 border-b-2 border-terracotta text-terracotta flex items-center gap-1.5 whitespace-nowrap">
+            <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+            <span>Etnografía & Rito</span>
+          </button>
+          <button data-tab="tab-pers" class="tab-btn py-3 px-3 border-b-2 border-transparent text-gray-500 hover:text-heritage-900 flex items-center gap-1.5 whitespace-nowrap">
+            <i data-lucide="users" class="w-3.5 h-3.5"></i>
+            <span>Personajes & Atrezo</span>
+          </button>
+          <button data-tab="tab-secu" class="tab-btn py-3 px-3 border-b-2 border-transparent text-gray-500 hover:text-heritage-900 flex items-center gap-1.5 whitespace-nowrap">
+            <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+            <span>Secuencia Temporal</span>
+          </button>
+          <button data-tab="tab-esca" class="tab-btn py-3 px-3 border-b-2 border-transparent text-gray-500 hover:text-heritage-900 flex items-center gap-1.5 whitespace-nowrap">
+            <i data-lucide="film" class="w-3.5 h-3.5"></i>
+            <span>Guion Documental</span>
+          </button>
+        </div>
+
+        <!-- Scrollable Tab Content Container -->
+        <div id="tabContentScroll" class="flex-grow p-6 overflow-y-auto bg-white">
+          
+          <!-- TAB 1: Etnografía & Resumen -->
+          <div id="tab-etno" class="tab-pane block space-y-4">
+            <div id="detailSummaryBox" class="p-4 rounded-xl bg-heritage-50 border border-heritage-200 text-sm text-gray-700 leading-relaxed italic border-l-4 border-l-terracotta">
+              Resumen...
+            </div>
+            
+            <div id="detailEtnoContent" class="markdown-content text-sm">
+              <!-- Rendered markdown for etnografía -->
+            </div>
+          </div>
+
+          <!-- TAB 2: Personajes & Atrezo -->
+          <div id="tab-pers" class="tab-pane hidden space-y-4">
+            <div class="text-xs text-gray-500 mb-2">
+              Figuras rituales, indumentaria tradicional y funciones simbólicas tipificadas.
+            </div>
+            <div id="detailPersContent" class="markdown-content text-sm">
+              <!-- Rendered markdown for personajes -->
+            </div>
+          </div>
+
+          <!-- TAB 3: Secuencia Cronológica -->
+          <div id="tab-secu" class="tab-pane hidden space-y-4">
+            <div class="text-xs text-gray-500 mb-2">
+              Estructura narrativa y desarrollo cronológico del ritual paso a paso.
+            </div>
+            <div id="detailSecuContent" class="markdown-content text-sm">
+              <!-- Rendered markdown for secuencia -->
+            </div>
+          </div>
+
+          <!-- TAB 4: Guion / Escaleta Documental -->
+          <div id="tab-esca" class="tab-pane hidden space-y-4">
+            <div class="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-800 flex items-center gap-2 mb-2">
+              <i data-lucide="clapperboard" class="w-4 h-4 text-amber-600 flex-shrink-0"></i>
+              <span>Propuesta de Escaleta Audiovisual (12–15 min) con minutaje y diseño sonoro.</span>
+            </div>
+            <div id="detailEscaContent" class="markdown-content text-sm font-mono text-xs leading-relaxed">
+              <!-- Rendered markdown for escaleta -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Cargar Mapas Vectoriales GeoJSON de España y sus Provincias -->
+  <script src="data/spain_provinces.js"></script>
+  <script src="data/spain_communities.js"></script>
+
+  <!-- Cargar Dataset completo de las 40 Fiestas -->
+  <script src="data/fiestas_data.js"></script>
+
+  <!-- Lógica Principal de la Aplicación -->
+  <script>
+    let map;
+    let insetMap;
+    let markers = {};
+    let provincesLayer;
+    let communitiesLayer;
+    let currentTileLayer = null;
+    let insetTileLayer = null;
+    let activeFiestaId = null;
+    let filteredFiestas = [...FIESTAS_DATA];
+    let currentLayerType = 'ign';
+
+    // Colores oficiales por estación
+    const SEASON_COLORS = {
+      'Invierno': '#2B6CB0',
+      'Primavera': '#2F855A',
+      'Verano': '#DD6B20',
+      'Otoño': '#9C4221'
+    };
+
+    // Proveedores de capas de mapa 100% LIBRES DE MARCAS DE AGUA Y SIN API KEY
+    const TILE_PROVIDERS = {
+      // 1. IGN Oficial de España (Instituto Geográfico Nacional)
+      ign: {
+        url: 'https://www.ign.es/wmts/ign-base?service=WMTS&request=GetTile&version=1.0.0&Format=image/png&layer=IGNBaseTodo&style=default&tilematrixset=GoogleMapsCompatible&TileMatrix={z}&TileRow={y}&TileCol={x}',
+        attribution: '&copy; Instituto Geográfico Nacional de España (IGN)',
+        maxZoom: 18,
+        opacity: 0.95
+      },
+      // 2. Esri Topo / Relieve Físico
+      topo: {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+        attribution: '&copy; Esri World Topo Map',
+        maxZoom: 18,
+        opacity: 0.92
+      }
+    };
+
+    // Mapeo rápido de fiestas por provincia para tooltips
+    const fiestasByProvince = {};
+    FIESTAS_DATA.forEach(f => {
+      const p = f.province.toLowerCase();
+      if (!fiestasByProvince[p]) fiestasByProvince[p] = [];
+      fiestasByProvince[p].push(f);
+    });
+
+    // Encuadre geográfico de la Península Ibérica y Baleares
+    const SPAIN_PENINSULA_BOUNDS = [
+      [35.8, -9.6],  // Suroeste (Tarifa / cabo San Vicente)
+      [43.9, 4.4]    // Noreste (Pirineos / Cap de Creus / Menorca)
+    ];
+
+    function initMap() {
+      // 1. Inicializar mapa principal
+      map = L.map('map', {
+        center: [40.2, -3.7],
+        zoom: 6,
+        minZoom: 5,
+        maxZoom: 14,
+        zoomControl: false,
+        maxBounds: [
+          [26.0, -19.0], // Límite sur-oeste (incluyendo Canarias)
+          [45.5, 6.5]    // Límite nor-este
+        ]
+      });
+
+      // Controles de zoom en esquina superior derecha
+      L.control.zoom({ position: 'topright' }).addTo(map);
+
+      // 2. Establecer capa base de fondo (IGN de España por defecto)
+      setBaseLayer('ign');
+
+      // 3. CAPA VECTORIAL DE ESPAÑA (Provincias de Fondo)
+      if (typeof SPAIN_PROVINCES_GEOJSON !== 'undefined') {
+        provincesLayer = L.geoJSON(SPAIN_PROVINCES_GEOJSON, {
+          style: function(feature) {
+            return {
+              fillColor: '#FFFDF9',
+              fillOpacity: 0.22,
+              color: '#8C5627',
+              weight: 1.3,
+              dashArray: '2, 3',
+              className: 'province-polygon'
+            };
+          },
+          onEachFeature: function(feature, layer) {
+            const pName = feature.properties.name;
+            const pKey = pName.toLowerCase();
+            
+            let matchedFiestas = [];
+            for (const [k, list] of Object.entries(fiestasByProvince)) {
+              if (pKey.includes(k) || k.includes(pKey)) {
+                matchedFiestas = matchedFiestas.concat(list);
+              }
+            }
+
+            let tooltipContent = `<div class="font-sans text-xs p-1">
+              <strong class="text-heritage-900">${pName}</strong>`;
+            
+            if (matchedFiestas.length > 0) {
+              tooltipContent += `<div class="mt-1 text-terracotta font-semibold">`;
+              tooltipContent += matchedFiestas.map(f => `#${f.id} ${f.name}`).join('<br>');
+              tooltipContent += `</div>`;
+            } else {
+              tooltipContent += `<div class="text-gray-400 text-[10px]">Sin fiestas catalogadas</div>`;
+            }
+            tooltipContent += `</div>`;
+
+            layer.bindTooltip(tooltipContent, {
+              sticky: true,
+              opacity: 0.95
+            });
+
+            layer.on({
+              mouseover: function(e) {
+                layer.setStyle({
+                  fillColor: '#C85A32',
+                  fillOpacity: 0.35,
+                  color: '#8C5627',
+                  weight: 2.5
+                });
+                const provIndicator = document.getElementById('hoveredProvince');
+                if (provIndicator) {
+                  provIndicator.textContent = `📍 ${pName}` + (matchedFiestas.length ? ` (${matchedFiestas.map(f => '#' + f.id).join(', ')})` : '');
+                }
+              },
+              mouseout: function(e) {
+                provincesLayer.resetStyle(layer);
+                const provIndicator = document.getElementById('hoveredProvince');
+                if (provIndicator) provIndicator.textContent = '';
+              }
+            });
+          }
+        }).addTo(map);
+      }
+
+      // 4. Capa de Contorno de Comunidades Autónomas
+      if (typeof SPAIN_COMMUNITIES_GEOJSON !== 'undefined') {
+        communitiesLayer = L.geoJSON(SPAIN_COMMUNITIES_GEOJSON, {
+          style: {
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            color: '#5C3413',
+            weight: 2.2,
+            opacity: 0.9,
+            interactive: false
+          }
+        }).addTo(map);
+      }
+
+      // 5. Renderizar los 40 marcadores numéricos de las fiestas
+      renderMarkers(FIESTAS_DATA);
+
+      // 6. Cuadrar el mapa a la Península y Baleares con padding óptimo
+      fitSpainPeninsula();
+
+      // 7. Inicializar Inset de Canarias (Tenerife / Icod de los Vinos #36)
+      initCanariasInset();
+
+      // Forzar ajuste de tamaño
+      setTimeout(() => {
+        map.invalidateSize();
+        fitSpainPeninsula();
+      }, 250);
+
+      window.addEventListener('resize', () => {
+        map.invalidateSize();
+      });
+    }
+
+    // Cambiar la capa de mapa base (IGN Oficial de España o Relieve Físico Esri Topo)
+    function setBaseLayer(type) {
+      currentLayerType = type;
+      if (currentTileLayer) {
+        map.removeLayer(currentTileLayer);
+        currentTileLayer = null;
+      }
+
+      const prov = TILE_PROVIDERS[type] || TILE_PROVIDERS.ign;
+      currentTileLayer = L.tileLayer(prov.url, {
+        attribution: prov.attribution,
+        maxZoom: prov.maxZoom,
+        opacity: prov.opacity
+      }).addTo(map);
+      currentTileLayer.bringToBack();
+
+      if (provincesLayer) {
+        provincesLayer.setStyle({
+          fillColor: '#FFFDF9',
+          fillOpacity: 0.18,
+          color: '#8C5627',
+          weight: 1.3,
+          dashArray: '2, 3'
+        });
+      }
+    }
+
+    // Cuadrar el mapa para que España ocupe todo el encuadre
+    function fitSpainPeninsula() {
+      if (!map) return;
+      map.fitBounds(SPAIN_PENINSULA_BOUNDS, {
+        padding: [24, 24],
+        maxZoom: 7
+      });
+    }
+
+    // Inicializar el Inset Mini-map de Canarias
+    function initCanariasInset() {
+      const insetEl = document.getElementById('canariasInsetMap');
+      if (!insetEl) return;
+
+      insetMap = L.map('canariasInsetMap', {
+        center: [28.3667, -16.7167], // Icod de los Vinos, Tenerife
+        zoom: 8,
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        touchZoom: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false
+      });
+
+      // Usar IGN o Topo para el inset también (sin marcas de agua)
+      L.tileLayer(TILE_PROVIDERS.ign.url, {
+        maxZoom: 18,
+        opacity: 0.95
+      }).addTo(insetMap);
+
+      // Dibujar polígono de Canarias en el inset
+      if (typeof SPAIN_PROVINCES_GEOJSON !== 'undefined') {
+        L.geoJSON(SPAIN_PROVINCES_GEOJSON, {
+          filter: f => f.properties.name.toLowerCase().includes('tenerife') || f.properties.name.toLowerCase().includes('palmas'),
+          style: {
+            fillColor: '#FFFDF9',
+            fillOpacity: 0.35,
+            color: '#8C5627',
+            weight: 1.5
+          }
+        }).addTo(insetMap);
+      }
+
+      // Añadir marcador #36 en el inset
+      const f36 = FIESTAS_DATA.find(f => f.id === 36);
+      if (f36) {
+        const marker36Icon = L.divIcon({
+          className: 'custom-leaflet-marker',
+          html: `<div class="custom-marker-pin" style="background-color: #9C4221; width: 28px; height: 28px; font-size: 11px;">
+                   <span>36</span>
+                 </div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        });
+
+        const m36 = L.marker([f36.lat, f36.lng], { icon: marker36Icon }).addTo(insetMap);
+        m36.bindTooltip(`<strong>#36 ${f36.name}</strong><br>${f36.town}`, { direction: 'top' });
+        m36.on('click', () => openFiestaDetail(36, false));
+      }
+    }
+
+    // Renderizar los marcadores de las fiestas
+    function renderMarkers(dataList) {
+      Object.values(markers).forEach(m => map.removeLayer(m));
+      markers = {};
+
+      dataList.forEach(fiesta => {
+        const color = SEASON_COLORS[fiesta.season] || '#C85A32';
+        
+        const markerIcon = L.divIcon({
+          className: 'custom-leaflet-marker',
+          html: `<div id="marker-pin-${fiesta.id}" class="custom-marker-pin" style="background-color: ${color};">
+                   <span>${fiesta.id}</span>
+                 </div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+          popupAnchor: [0, -18]
+        });
+
+        const marker = L.marker([fiesta.lat, fiesta.lng], { 
+          icon: markerIcon,
+          zIndexOffset: 100 + fiesta.id
+        });
+
+        marker.bindTooltip(`
+          <div class="font-sans text-xs p-1">
+            <div class="font-bold text-gray-900">#${fiesta.id}. ${fiesta.name}</div>
+            <div class="text-gray-500">${fiesta.town} (${fiesta.province}) · <span class="text-terracotta font-semibold">${fiesta.date_display}</span></div>
+          </div>
+        `, {
+          direction: 'top',
+          offset: [0, -16],
+          opacity: 0.98
+        });
+
+        marker.on('click', () => {
+          openFiestaDetail(fiesta.id, true);
+        });
+
+        marker.addTo(map);
+        markers[fiesta.id] = marker;
+      });
+
+      updateResultsCount();
+    }
+
+    // Abrir detalles de la fiesta en el panel derecho
+    function openFiestaDetail(fid, shouldFlyTo = false) {
+      const fiesta = FIESTAS_DATA.find(f => f.id === fid);
+      if (!fiesta) return;
+
+      activeFiestaId = fid;
+
+      // Resaltar marcador activo en el mapa
+      document.querySelectorAll('.custom-marker-pin').forEach(el => el.classList.remove('active'));
+      const activePin = document.getElementById(`marker-pin-${fid}`);
+      if (activePin) {
+        activePin.classList.add('active');
+      }
+
+      if (shouldFlyTo && map) {
+        map.flyTo([fiesta.lat, fiesta.lng], Math.max(map.getZoom(), 8), {
+          duration: 1.2
+        });
+      }
+
+      // Ocultar pantalla de bienvenida y mostrar panel de detalles
+      document.getElementById('welcomeView').classList.add('hidden');
+      const detailView = document.getElementById('fiestaDetailView');
+      detailView.classList.remove('hidden');
+
+      // Rellenar datos de cabecera
+      const badgeId = document.getElementById('detailBadgeId');
+      badgeId.textContent = fiesta.id;
+      badgeId.style.backgroundColor = SEASON_COLORS[fiesta.season] || '#C85A32';
+
+      document.getElementById('detailSeasonBadge').textContent = `${fiesta.season} · ${fiesta.month}`;
+      document.getElementById('detailCategoryBadge').textContent = fiesta.category;
+      document.getElementById('detailTitle').textContent = `#${fiesta.id} ${fiesta.name}`;
+      document.getElementById('detailLocation').textContent = `${fiesta.town}, ${fiesta.province} (${fiesta.region})`;
+      document.getElementById('detailDate').textContent = `${fiesta.date_full} (${fiesta.date_display})`;
+      
+      const srcBadge = document.getElementById('detailSourceBadge');
+      if (fiesta.id === 33) {
+        srcBadge.textContent = 'Dossier Reconstruido (Gau Beltza)';
+        srcBadge.className = 'text-[10px] text-terracotta bg-terracotta-light px-1.5 py-0.5 rounded border border-terracotta/30 font-semibold';
+      } else if ([17, 20, 29, 30].includes(fiesta.id)) {
+        srcBadge.textContent = 'Bonus Track Enriquecido';
+        srcBadge.className = 'text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 font-semibold';
+      } else {
+        srcBadge.textContent = 'Dossier Oficial 2027';
+        srcBadge.className = 'text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded border border-heritage-200';
+      }
+
+      // Rellenar resumen
+      document.getElementById('detailSummaryBox').innerHTML = marked.parse(fiesta.summary || '');
+
+      // Rellenar pestañas
+      document.getElementById('detailEtnoContent').innerHTML = marked.parse(fiesta.etnografia || '*Sin detalles etnográficos adicionales.*');
+      document.getElementById('detailPersContent').innerHTML = marked.parse(fiesta.personajes || '*Sin personajes especificados.*');
+      document.getElementById('detailSecuContent').innerHTML = marked.parse(fiesta.secuencia || '*Sin secuencia temporal registrada.*');
+      document.getElementById('detailEscaContent').innerHTML = marked.parse(fiesta.escaleta || '*Sin guion documental disponible.*');
+
+      // Reiniciar a la primera pestaña
+      switchTab('tab-etno');
+      document.getElementById('tabContentScroll').scrollTop = 0;
+
+      lucide.createIcons();
+    }
+
+    // Cambio de pestañas del panel derecho
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.getAttribute('data-tab') === tabId) {
+          btn.className = 'tab-btn py-3 px-3 border-b-2 border-terracotta text-terracotta flex items-center gap-1.5 whitespace-nowrap font-bold';
+        } else {
+          btn.className = 'tab-btn py-3 px-3 border-b-2 border-transparent text-gray-500 hover:text-heritage-900 flex items-center gap-1.5 whitespace-nowrap';
+        }
+      });
+
+      document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.add('hidden');
+      });
+      const activePane = document.getElementById(tabId);
+      if (activePane) {
+        activePane.classList.remove('hidden');
+      }
+    }
+
+    // Filtrar fiestas y sincronizar tanto marcadores como el Inset de Canarias (#36)
+    function applyFilters() {
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const activeSeasonBtn = document.querySelector('.season-filter-btn.bg-heritage-900');
+      const selectedSeason = activeSeasonBtn ? activeSeasonBtn.getAttribute('data-season') : 'all';
+      const selectedCategory = document.getElementById('categorySelect').value;
+      const activeMonthBtn = document.querySelector('.month-btn.bg-heritage-900');
+      const selectedMonth = activeMonthBtn ? parseInt(activeMonthBtn.getAttribute('data-month')) : null;
+
+      filteredFiestas = FIESTAS_DATA.filter(f => {
+        // Filtro por texto
+        if (query) {
+          const matchName = f.name.toLowerCase().includes(query);
+          const matchTown = f.town.toLowerCase().includes(query);
+          const matchProv = f.province.toLowerCase().includes(query);
+          const matchCat = f.category.toLowerCase().includes(query);
+          const matchSummary = (f.summary || '').toLowerCase().includes(query);
+          const matchId = f.id.toString() === query;
+          if (!matchName && !matchTown && !matchProv && !matchCat && !matchSummary && !matchId) {
+            return false;
+          }
+        }
+
+        // Filtro por estación
+        if (selectedSeason !== 'all' && f.season !== selectedSeason) {
+          return false;
+        }
+
+        // Filtro por categoría
+        if (selectedCategory !== 'all') {
+          if (!f.category.toLowerCase().includes(selectedCategory.toLowerCase())) {
+            return false;
+          }
+        }
+
+        // Filtro por mes
+        if (selectedMonth && f.month_num !== selectedMonth) {
+          return false;
+        }
+
+        return true;
+      });
+
+      // Renderizar marcadores filtrados
+      renderMarkers(filteredFiestas);
+
+      // SINCRONIZACIÓN DE LA FIESTA 36:
+      // Si la fiesta 36 ha sido excluida por los filtros, ocultar el recuadro Inset de Canarias
+      const isFiesta36Visible = filteredFiestas.some(f => f.id === 36);
+      const canariasBox = document.getElementById('canariasInsetBox');
+      if (canariasBox) {
+        if (isFiesta36Visible) {
+          canariasBox.classList.remove('hidden');
+          if (insetMap) setTimeout(() => insetMap.invalidateSize(), 50);
+        } else {
+          canariasBox.classList.add('hidden');
+        }
+      }
+
+      if (activeFiestaId && !filteredFiestas.some(f => f.id === activeFiestaId)) {
+        document.querySelectorAll('.custom-marker-pin').forEach(el => el.classList.remove('active'));
+      }
+    }
+
+    function updateResultsCount() {
+      const el = document.getElementById('resultsCount');
+      if (el) {
+        el.textContent = `${filteredFiestas.length} de ${FIESTAS_DATA.length} fiestas`;
+      }
+    }
+
+    // Navegar a fiesta anterior o siguiente
+    function navigateFiesta(step) {
+      if (!activeFiestaId) {
+        openFiestaDetail(1, true);
+        return;
+      }
+      let currentIndex = filteredFiestas.findIndex(f => f.id === activeFiestaId);
+      if (currentIndex === -1) currentIndex = 0;
+      
+      let nextIndex = (currentIndex + step + filteredFiestas.length) % filteredFiestas.length;
+      openFiestaDetail(filteredFiestas[nextIndex].id, true);
+    }
+
+    // Inicializar eventos de la interfaz
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      lucide.createIcons();
+
+      // Buscador alargado hacia la izquierda
+      const searchInput = document.getElementById('searchInput');
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+      
+      searchInput.addEventListener('input', () => {
+        clearSearchBtn.classList.toggle('hidden', !searchInput.value);
+        applyFilters();
+      });
+
+      clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        clearSearchBtn.classList.add('hidden');
+        searchInput.focus();
+        applyFilters();
+      });
+
+      // Selector de mapa base sin marcas de agua
+      document.getElementById('layerSelect').addEventListener('change', (e) => {
+        setBaseLayer(e.target.value);
+      });
+
+      // Filtros de estación
+      document.querySelectorAll('.season-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.season-filter-btn').forEach(b => {
+            b.className = 'season-filter-btn px-2 py-1 rounded-md text-gray-600 hover:text-heritage-900 transition-colors';
+          });
+          btn.className = 'season-filter-btn px-2.5 py-1 rounded-md bg-heritage-900 text-white shadow-xs font-bold';
+          applyFilters();
+        });
+      });
+
+      // Filtro de categoría
+      document.getElementById('categorySelect').addEventListener('change', applyFilters);
+
+      // Filtro de meses
+      document.querySelectorAll('.month-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const isSelected = btn.classList.contains('bg-heritage-900');
+          document.querySelectorAll('.month-btn').forEach(b => {
+            b.className = 'month-btn px-2 py-0.5 rounded text-gray-600 hover:bg-white';
+          });
+          if (!isSelected) {
+            btn.className = 'month-btn px-2 py-0.5 rounded bg-heritage-900 text-white font-bold shadow-xs';
+          }
+          applyFilters();
+        });
+      });
+
+      // Pestañas del panel derecho
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          switchTab(btn.getAttribute('data-tab'));
+        });
+      });
+
+      // Navegación Anterior / Siguiente
+      document.getElementById('prevFiestaBtn').addEventListener('click', () => navigateFiesta(-1));
+      document.getElementById('nextFiestaBtn').addEventListener('click', () => navigateFiesta(1));
+
+      // Centrar en mapa
+      document.getElementById('centerOnMapBtn').addEventListener('click', () => {
+        if (activeFiestaId) {
+          const f = FIESTAS_DATA.find(item => item.id === activeFiestaId);
+          if (f) map.flyTo([f.lat, f.lng], 10, { duration: 1.0 });
+        }
+      });
+
+      // Botón cerrar panel
+      document.getElementById('closeDetailBtn').addEventListener('click', () => {
+        activeFiestaId = null;
+        document.querySelectorAll('.custom-marker-pin').forEach(el => el.classList.remove('active'));
+        document.getElementById('fiestaDetailView').classList.add('hidden');
+        document.getElementById('welcomeView').classList.remove('hidden');
+      });
+
+      // Comenzar tour (#1)
+      document.getElementById('startTourBtn').addEventListener('click', () => {
+        openFiestaDetail(1, true);
+      });
+
+      // Clic en Inset de Canarias (#36)
+      document.getElementById('canariasInsetBox').addEventListener('click', () => {
+        openFiestaDetail(36, false);
+      });
+
+      // Resetear vista del mapa a España Peninsular
+      document.getElementById('resetViewBtn').addEventListener('click', () => {
+        fitSpainPeninsula();
+      });
+    });
+  </script>
+</body>
+</html>
